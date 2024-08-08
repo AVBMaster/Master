@@ -4,10 +4,42 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>大师的网站</title>
+
+    <style>
+      body {
+        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+
+        background-size: 400% 400%;
+
+        animation: gradient 15s ease infinite;
+
+        height: 100vh;
+      }
+
+      @keyframes gradient {
+        0% {
+          background-position: 0% 50%;
+        }
+
+        50% {
+          background-position: 100% 50%;
+        }
+
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+
+      .bigger {
+        font-size: large;
+      }
+    </style>
+
+    <link />
   </head>
 
   <body>
-    <p>你好，欢迎来到大师的网站！</p>
+    <p class="bigger">你好，欢迎来到大师的网站！</p>
     <div></div>
     <div></div>
     <img
@@ -16,10 +48,14 @@
     />
     <p>我们期待你的到来</p>
 
-    <p>
-      <marquee scrolldelay="5ms" scrollamount="10ms">
+    <p class="bigger">
+      <marquee scrolldelay="5ms" scrollamount="15ms">
         绝妙的点子往往只是海市蜃楼，不经验证的想法终会为空。
       </marquee>
     </p>
+
+    <button style="color: blanchedalmond; background-color: cadetblue">
+      打开GitHub
+    </button>
   </body>
 </html>
