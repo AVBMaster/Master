@@ -38,22 +38,46 @@
     <link />
   </head>
 
-  <body style="display: flex; flex-direction:column;align-items: center;">
-    <p class="bigger">你好，欢迎来到大师的网站！</p>
-    <div></div>
-    <div></div>
-    <img
-      src="https://avatars.githubusercontent.com/u/166021505?v=4"
-      style="height: 100px"
-    />
-    <p class="bigger">
-      <marquee scrolldelay="5ms" scrollamount="5ms">
-        绝妙的点子往往只是海市蜃楼，不经验证的想法终会为空。
-      </marquee>
-    </p>
-    <p >我们期待你的到来</p>
+  <body style="display: flex; flex-direction: column; align-items: center;margin: 0;">
+    <headphoto
+      style="
+        display: flex;
+        width: 100%;
+        height: 70px;
+        background-color: #eee;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <img
+        src="https://avatars.githubusercontent.com/u/166021505?v=4"
+        alt="Logo"
+        height="50px"
+        width="50px"
+      />
+    </headphoto>
 
-    
+    <p  style="
+        display: flex;
+        width: 100%;
+        height: 30px;
+        background-color: #bbbbbb;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        margin: 0;
+        padding: 0;
+      "
+    >
+        <marquee behavior="" direction="" class="bigger">
+          每日金句：绝妙的点子往往只是海市蜃楼，不经验证的想法终会为空。
+        </marquee>
+      </p>
+
+    <MainArticle style="display: block; padding: 30px">
+      <p>你好，欢迎来到大师的网站！</p>
+      <p>我们期待你的到来</p>
+    </MainArticle>
 
     <button style="color: rgb(0, 0, 0); background-color: cadetblue">
       打开GitHub
