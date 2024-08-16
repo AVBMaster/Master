@@ -88,7 +88,7 @@
       "
     >
       <marquee behavior="" direction="">
-        温馨提示：您的暑假余额不足，再过几天就要开学了！🐱‍👓
+        今日祝福：七夕快乐！
       </marquee>
     </p>
 
@@ -103,8 +103,92 @@
       <p style="display: inline">你就是：</p>
       <input type="text" placeholder="某个《小可爱》"  />
       <p>这个网站就送给你这个有缘人啦</p>
-      <p>对了，我用的是<a href="https://avbmaster.github.io">https://avbmaster.github.io</a>这个域名作为个人网站</p>
-      <p>你现在看到的网页其实是单独为你写的，嘻嘻😊</p>
+      <p>如果有什么想对我说的，可以在写在下面的留言框中发送</p>
+      <p>我就可以收到你的留言啦</p>
+      <textarea id="gist-content" rows="10" cols="30" >加载中...</textarea>
+      <button onclick="updateGist()">发送</button>
+
+      <script>
+      const gistId = "38f4c48e4738226084e24db38aff9ef7"; // 替换为你的Gist ID
+      const token = "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"; // 替换为你的GitHub Token
+      let gist = null; // 在外部定义gist对象
+
+      async function fetchGist() {
+        try {
+          const response = await fetch(
+            `https://api.github.com/gists/${gistId}`,
+            {
+              headers: {
+                Authorization: `token ${token}`,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+
+          gist = await response.json(); // 将获取到的gist对象保存到外部变量
+          const files = gist.files;
+          const fileName = Object.keys(files)[0]; // 获取文件名
+          const content = files[fileName].content;
+
+          document.getElementById("gist-content").value = content;
+        } catch (error) {
+          console.error("Error fetching Gist:", error);
+          document.getElementById("gist-content").value =
+            "Error fetching Gist.";
+        }
+      }
+
+      async function updateGist() {
+        const newContent = document.getElementById("gist-content").value;
+
+        if (!gist) {
+          console.error("Gist data is not available");
+          alert("Error: Gist data not available.");
+          return;
+        }
+
+        try {
+          const files = gist.files;
+          const fileName = Object.keys(files)[0]; // 获取文件名
+
+          const response = await fetch(
+            `https://api.github.com/gists/${gistId}`,
+            {
+              method: "PATCH",
+              headers: {
+                Authorization: `token ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                files: {
+                  [fileName]: {
+                    // 使用正确的文件名
+                    content: newContent,
+                  },
+                },
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(
+              `Network response was not ok: ${JSON.stringify(errorData)}`
+            );
+          }
+
+          alert("Gist updated successfully!");
+        } catch (error) {
+          console.error("Error updating Gist:", error);
+          alert("Error updating Gist.");
+        }
+      }
+
+      fetchGist();
+    </script>
     </MainArticle>
   </body>
 </html>
