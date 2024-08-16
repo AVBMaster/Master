@@ -109,10 +109,7 @@
       <button onclick="updateGist()">发送</button>
 
       <script>
-// 使用token进行API请求
-        
-
-
+      // 使用token进行API请求
       const gistId = "38f4c48e4738226084e24db38aff9ef7"; 
       const token ="ghp_zMA2AJvWFCkPVNshWZyJeIQTsODB7a3sMnJ" + "P"
 
@@ -142,7 +139,7 @@
         } catch (error) {
           console.error("Error fetching Gist:", error);
           document.getElementById("gist-content").value =
-            "Error fetching Gist.";
+            "读取失败！";
         }
       }
 
@@ -151,7 +148,7 @@
 
         if (!gist) {
           console.error("Gist data is not available");
-          alert("Error: Gist data not available.");
+          alert("出错了，找不到留言区的数据了");
           return;
         }
 
@@ -185,10 +182,10 @@
             );
           }
 
-          alert("Gist updated successfully!");
+          alert("留言成功！");
         } catch (error) {
           console.error("Error updating Gist:", error);
-          alert("Error updating Gist.");
+          alert("留言失败！");
         }
       }
 
