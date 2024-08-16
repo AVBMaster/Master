@@ -3,194 +3,102 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>大师的网站</title>
-
-    <style>
-      .Beautifal1 {
-        background: linear-gradient(-90deg, #8bebfc, #8bebfc, #ff80c0, #e8ff80);
-
-        background-size: 400% 400%;
-
-        animation: gradient 8s ease infinite;
-
-        height: 100vh;
-      }
-
-      @keyframes gradient {
-        0% {
-          background-position: 0% 50%;
-        }
-
-        50% {
-          background-position: 100% 50%;
-        }
-
-        100% {
-          background-position: 0% 50%;
-        }
-      }
-
-      .bigger {
-        font-size: large;
-      }
-
-      img {
-        border-radius: 100%;
-        max-width: 100%;
-        height: auto;
-      }
-    </style>
-
-    <script
-      async
-      src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"
-    ></script>
-
-   
-  <body
-    class="Beautifal1"
-    style="
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0;
-    "
-  >
-    <headphoto
-      style="
-        display: flex;
-        width: 100%;
-        height: 50px;
-        background-color: #eeeeee00;
-        align-items: center;
-        justify-content: center;
-      "
-    >
-      <img
-        src="https://ts1.cn.mm.bing.net/th?id=OIP-C.7was4jGpZQmcF4ps1_-nvAHaHh&w=247&h=252&c=8&rs=1&qlt=90&o=6&pid=3.1&rm=2"
-        alt="Logo"
-        height="50px"
-        width="50px"
-      />
-    </headphoto>
-
-    <p
-      style="
-        display: flex;
-        width: 100%;
-        height: 30px;
-        background-color: #e9e9e94f;
-        align-items: center;
-        justify-content: center;
-        border: 0;
-        margin: 0;
-        padding: 0;
-      "
-    >
-      <marquee behavior="" direction="">
-        今日祝福：七夕快乐！（不知道要写什么，所以一直保留七夕这天的祝福……）
-      </marquee>
-    </p>
-
-    <MainArticle style="display: block; padding: 30px;background-color: #f8f8f87c;">
-      <p>
-        本站总访问量<span id="busuanzi_value_page_pv"
-          ><i class="fa fa-spinner fa-spin"></i></span
-        >次
-      </p>
-      <p>你好，欢迎来到大师的网站！</p>
-      <p>我已经猜到你是谁了</p>
-      <p style="display: inline">你就是：</p>
-      <input type="text" placeholder="某个《小可爱》"  />
-      <p>这个网站就送给你这个有缘人啦</p>
-      <p>如果有什么想对我说的，可以在写在下面的留言框中发送</p>
-      <p>我就可以收到你的留言啦</p>
-      <textarea id="gist-content" rows="10" cols="30" >加载中...</textarea>
-      <button onclick="updateGist()">发送</button>
-
-      <script>
-      // 使用token进行API请求
-      const gistId = "38f4c48e4738226084e24db38aff9ef7"; 
-      const token ="ghp_zMA2AJvWFCkPVNshWZyJeIQTsODB7a3sMnJ" + "P"
-
-      let gist = null; // 在外部定义gist对象
-
-      async function fetchGist() {
-        try {
-          const response = await fetch(
-            `https://api.github.com/gists/${gistId}`,
-            {
-              headers: {
-                Authorization: `token ${token}`,
-              },
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error("Network response was not ok");
-          }
-
-          gist = await response.json(); // 将获取到的gist对象保存到外部变量
-          const files = gist.files;
-          const fileName = Object.keys(files)[0]; // 获取文件名
-          const content = files[fileName].content;
-
-          document.getElementById("gist-content").value = content;
-        } catch (error) {
-          console.error("Error fetching Gist:", error);
-          document.getElementById("gist-content").value =
-            "读取失败！";
-        }
-      }
-
-      async function updateGist() {
-        const newContent = document.getElementById("gist-content").value;
-
-        if (!gist) {
-          console.error("Gist data is not available");
-          alert("出错了，找不到留言区的数据了");
-          return;
-        }
-
-        try {
-          const files = gist.files;
-          const fileName = Object.keys(files)[0]; // 获取文件名
-
-          const response = await fetch(
-            `https://api.github.com/gists/${gistId}`,
-            {
-              method: "PATCH",
-              headers: {
-                Authorization: `token ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                files: {
-                  [fileName]: {
-                    // 使用正确的文件名
-                    content: newContent,
-                  },
-                },
-              }),
-            }
-          );
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              `Network response was not ok: ${JSON.stringify(errorData)}`
-            );
-          }
-
-          alert("留言成功！");
-        } catch (error) {
-          console.error("Error updating Gist:", error);
-          alert("留言失败！");
-        }
-      }
-
-      fetchGist();
-    </script>
-    </MainArticle>
+    <meta name="title" content="大师网" />
+    <meta name="url" content="https://avbmaster.github.io" />
+    <meta name="keywords" content="大师网" />
+    <meta name="description" content="欢迎来到大师的个人网站——大师网！" />
+    <title>大师个人网</title>
+    <link rel="stylesheet" href="index.css" />
+    <script src="index.js"></script>
+  </head>
+  <body class="flexclass">
+    <!--侧边栏-->
+    <div class="sideclass cebian" style="z-index: 2">
+      <!--左上角框-->
+      <div
+        class="flexclass"
+        style="align-items: center; justify-content: center; padding: 4px"
+      >
+        <!--图标-->
+        <img
+          src="https://ts1.cn.mm.bing.net/th?id=OIP-C.7was4jGpZQmcF4ps1_-nvAHaHh&w=247&h=252&c=8&rs=1&qlt=90&o=6&pid=3.1&rm=2"
+          alt="Logo"
+          style="width: 50px; height: 50px"
+        />
+        <!--标题-->
+        <p class="captionclass">大师网</p>
+      </div>
+      <!--导航栏-->
+      <div class="flex1class">
+        <div class="navclass">导航</div>
+        <div class="navclass">导航</div>
+        <div class="navclass">导航</div>
+        <div class="navclass">导航</div>
+        <div class="navclass">导航</div>
+        <div class="navclass">导航</div>
+      </div>
+    </div>
+    <!--主区域-->
+    <div class="flex1class flexclass columnclass">
+      <!--顶部栏-->
+      <div class="topclass flexclass" style="z-index: 1"></div>
+      <!--内容区-->
+      <div class="flexclass flex1class neirong" style="overflow: auto">
+        <!--左区-->
+        <div class="flexclass columnclass mg8class" style="flex: 3">
+          <!--数据区-->
+          <div class="flexclass shujuqu">
+            <!--数据块-->
+            <div
+              style="height: 100px; flex: 1; background-color: white"
+              class="mgr8class shujukuai"
+            ></div>
+            <div
+              style="height: 100px; flex: 1; background-color: white"
+              class="mgr8class shujukuai"
+            ></div>
+            <div
+              style="height: 100px; flex: 1; background-color: white"
+              class="mgr8class shujukuai"
+            ></div>
+            <div style="height: 100px; flex: 1; background-color: white"></div>
+          </div>
+          <!--列表区-->
+          <div class="flexclass columnclass">
+            <!--列表项-->
+            <div
+              style="height: 160px; background-color: white"
+              class="mgt8class"
+            ></div>
+            <div
+              style="height: 160px; background-color: white"
+              class="mgt8class"
+            ></div>
+            <div
+              style="height: 160px; background-color: white"
+              class="mgt8class"
+            ></div>
+            <div
+              style="height: 160px; background-color: white"
+              class="mgt8class"
+            ></div>
+            <div
+              style="height: 160px; background-color: white"
+              class="mgt8class"
+            ></div>
+          </div>
+        </div>
+        <!--右区-->
+        <div class="flexclass columnclass mgr8class youqu" style="flex: 1">
+          <!--提示区-->
+          <div style="height: 150px; background-color: white"></div>
+          <!--消息区-->
+          <div
+            style="height: 300px; background-color: white"
+            class="mgt8class"
+          ></div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
