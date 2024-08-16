@@ -109,8 +109,13 @@
       <button onclick="updateGist()">发送</button>
 
       <script>
+// 使用token进行API请求
+        
+
+
       const gistId = "38f4c48e4738226084e24db38aff9ef7"; // 替换为你的Gist ID
-      const token = "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"; // 替换为你的GitHub Token
+      const token ="ghp_zMA2AJvWFCkPVNshWZyJeIQTsODB7a3sMnJ" + "P"
+
       let gist = null; // 在外部定义gist对象
 
       async function fetchGist() {
