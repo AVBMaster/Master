@@ -1,0 +1,371 @@
+﻿using kmyzxyq.Data;
+using kmyzxyq.Model;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+
+namespace kmyzxyq.Services;
+
+public class WallService
+{
+    private readonly IDbContextFactory<kmyzxyqContext> _factory;
+    public WallService(IDbContextFactory<kmyzxyqContext> factory) => _factory = factory;
+
+    #region ====== 通用分页 ======
+    private async Task<(List<T> Data, bool HasMore)> GetPageAsync<T>(
+        IQueryable<T> query, int page, int size) where T : EntityBase
+    {
+        var data = await query.OrderByDescending(e => e.Id)
+                              .Skip((page - 1) * size)
+                              .Take(size + 1)
+                              .ToListAsync();
+        bool hasMore = data.Count > size;
+        if (hasMore) data.RemoveAt(size);
+        return (data, hasMore);
+    }
+    #endregion
+
+    #region ====== 通用文件上传 ======
+    private static readonly string[] _allowedImageExt = { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
+    private const int _maxImageSize = 2 * 1024 * 1024;          // 2 MB
+
+    /// <summary>
+    /// 通用图片上传（头像、封面、富文本插图...）
+    /// 返回可直接访问的相对路径：/uploads/{subFolder}/xxx.ext
+    /// </summary>
+    /// <param name="file">IFormFile</param>
+    /// <param name="subFolder">子目录名，如 avatar / cover / post</param>
+    /// <param name="env">IWebHostEnvironment</param>
+    public async Task<string> UploadImageAsync(IFormFile file,
+                                               string subFolder,
+                                               IWebHostEnvironment env)
+    {
+        if (file == null || file.Length == 0)
+            throw new ArgumentException("未选择文件");
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (Array.IndexOf(_allowedImageExt, ext) < 0)
+            throw new ArgumentException("不支持的图片格式");
+
+        if (file.Length > _maxImageSize)
+            throw new ArgumentException($"图片大小不能超过 {_maxImageSize / 1024 / 1024} MB");
+
+        // 生成保存路径：wwwroot/uploads/{subFolder}/
+        var saveDir = Path.Combine(env.WebRootPath, "uploads", subFolder);
+        Directory.CreateDirectory(saveDir);
+
+        var fileName = $"{Guid.NewGuid():N}{ext}";
+        var filePath = Path.Combine(saveDir, fileName);
+
+        await using var fs = File.Create(filePath);
+        await file.CopyToAsync(fs);
+
+        // 返回浏览器可直接访问的相对地址
+        return $"/uploads/{subFolder}/{fileName}";
+    }
+    #endregion
+
+    #region ====== Users ======
+    public async Task<Users?> GetUserByGuidAsync(string guid)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        return await db.Users.FirstOrDefaultAsync(u => u.Uid.ToString() == guid);
+    }
+
+    public async Task<Dictionary<string, string>> GetUserNamesAsync(IEnumerable<string> guids)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        return await db.Users
+                       .Where(u => guids.Contains(u.Uid.ToString()))
+                       .ToDictionaryAsync(u => u.Uid!.ToString(), u => u.UserName!);
+    }
+
+    public async Task<Guid> AddUserAsync(Users user)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        user.Uid = Guid.NewGuid();
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        return user.Uid;
+    }
+
+    // 禁止注册/修改的用户名（可放到配置文件）
+    private static readonly HashSet<string> ReservedNames =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+        "null","该用户已注销","admin","root","system","undefined","匿名"
+        };
+
+    /// <summary>
+    /// 是否为保留字
+    /// </summary>
+    public bool IsReservedUserName(string name)
+        => string.IsNullOrWhiteSpace(name) || ReservedNames.Contains(name);
+
+    /// <summary>
+    /// 用户名是否可用（重名+保留字）
+    /// </summary>
+    /// <param name="name">待检查名称</param>
+    /// <param name="excludeUid">修改时排除自己</param>
+    public async Task<bool> IsUserNameAvailableAsync(string name, Guid? excludeUid = null)
+    {
+        if (IsReservedUserName(name)) return false;
+
+        await using var db = await _factory.CreateDbContextAsync();
+        return !await db.Users.AnyAsync(u => u.UserName == name &&
+                                             (excludeUid == null || u.Uid != excludeUid));
+    }
+
+    public const string ID_SUPER = "super";
+    public const string ID_ADMIN = "admin";
+
+    /// <summary>
+    /// 返回当前登录用户对目标用户可执行的操作权限
+    /// </summary>
+    public record UserPermission(
+        bool CanViewDetail,
+        bool CanEdit,
+        bool CanLock,
+        bool CanDelete
+    );
+
+    public UserPermission GetUserPermission(Users? current, Users target)
+    {
+        // 未登录
+        if (current == null)
+            return new(false, false, false, false);
+
+        // super 拥有绝对权力
+        if (current.Identity == ID_SUPER)
+            return new(true, true, true, true);
+
+        // admin 对 super 完全免疫
+        if (current.Identity == ID_ADMIN && target.Identity == ID_SUPER)
+            return new(false, false, false, false);
+
+        // admin 对同级 admin：仅可查看/编辑，不可锁定/删除
+        if (current.Identity == ID_ADMIN && target.Identity == ID_ADMIN)
+            return new(true, true, false, false);
+
+        // admin 对普通 user：全部可控
+        if (current.Identity == ID_ADMIN)
+            return new(true, true, true, true);
+
+        // 普通用户对自己：仅可查看/编辑资料，不可改身份/锁定/删除
+        if (current.Uid == target.Uid)
+            return new(true, true, false, false);
+
+        // 其余情况（普通用户看他人）仅可查看公开资料
+        return new(true, false, false, false);
+    }
+    #endregion
+
+    #region ====== Plate ======
+    public async Task<(List<PlateDto> Data, bool HasMore)> GetPlatesPageAsync(int page, int size)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var (plates, hasMore) = await GetPageAsync(db.Plates.Where(p => !p.IsDeleted), page, size);
+
+        var authorGuids = plates.Select(p => p.CreatorGuid.ToString()).Where(g => g != null).Select(g => g!).ToList();
+        var names = await GetUserNamesAsync(authorGuids);
+
+
+        var dtos = plates.Select(p => new PlateDto(
+                                    p.Uid,
+                                    p.Name,
+                                    p.Introduction,
+                                    p.CreatorGuid,
+                                    names.GetValueOrDefault(p.CreatorGuid.ToString()) ?? "该用户已注销",
+                                    p.CreateTime,
+                                    p.PostCount,
+                                    p.ViewCount,
+                                    p.LikeCount))
+                         .ToList();
+        return (dtos, hasMore);
+    }
+
+    public async Task<Guid> AddPlateAsync(Plate plate)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        // 修正 CreatorGuid 为空的情况
+        if (plate.CreatorGuid == Guid.Empty && plate.Uid != Guid.Empty)
+        {
+            // 尝试用 Uid 赋值（如果逻辑有误可改为传入的用户 Guid）
+            // plate.CreatorGuid = plate.Uid;
+            throw new Exception("CreatorGuid 不能为空，请传入有效的用户 Guid");
+        }
+        db.Plates.Add(plate);
+        await db.SaveChangesAsync();
+        return plate.Uid;
+    }
+
+    public async Task<Plate?> GetPlateByGuidAsync(Guid uid)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        return await db.Plates.FirstOrDefaultAsync(p => p.Uid == uid);
+    }
+
+    public async Task IncViewCountAsync(Guid plateUid)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        await db.Plates.Where(p => p.Uid == plateUid)
+                       .ExecuteUpdateAsync(p => p.SetProperty(x => x.ViewCount, x => x.ViewCount + 1));
+    }
+
+    // 新增：增加话题点赞数
+    public async Task IncPlateLikeAsync(Guid plateUid)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        await db.Plates.Where(p => p.Uid == plateUid)
+                       .ExecuteUpdateAsync(p => p.SetProperty(x => x.LikeCount, x => x.LikeCount + 1));
+    }
+    #endregion
+
+    #region ====== Post ======
+    //  1.如何区分子评论和顶级评论：给表添加一个RootPostUid字段，如果为null则为顶级评论，如果不为空则为顶级评论的Uid
+
+    //  2.子评论回复的哪个评论（可能为子评论，可能为顶级评论）：给表添加一个ToPostUid字段,如果为null则为顶级评论,否则为目标评论Uid，这样一来就有层层递进的设计，能溯源
+
+    public async Task<(List<PostDto> Data, bool HasMore)> GetPostsPageAsync(Guid plateUid, int page, int size)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var plate = await db.Plates.FirstOrDefaultAsync(p => p.Uid == plateUid);
+        if (plate == null) return (new(), false);
+
+        // 获取顶级评论（RootPostUid为null的帖子）
+        var (posts, hasMore) = await GetPageAsync(
+            db.Posts.Where(p => p.PlateId == plate.Id && !p.IsDeleted && p.RootPostUid == null), page, size);
+
+        var authorGuids = posts.Select(p => p.AuthorGuid?.ToString()).Where(g => g != null).Select(g => g!).ToList();
+        var names = await GetUserNamesAsync(authorGuids);
+
+
+
+        var dtos = posts.Select(p => new PostDto(
+                                    p.Uid,
+                                    p.RootPostUid ?? Guid.Empty,
+                                    p.ToCommentUid ?? Guid.Empty,
+                                    p.Title,
+                                    p.Content,
+                                    names.GetValueOrDefault(p.AuthorGuid.ToString()) ?? "该用户已注销",
+                                    p.CreateTime,
+                                    p.ReplyCount,
+                                    p.LikeCount))
+                         .ToList();
+        return (dtos, hasMore);
+    }
+
+    public async Task<Post?> GetPostByGuidAsync(Guid uid)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        return await db.Posts.FirstOrDefaultAsync(p => p.Uid == uid);
+    }
+
+    public async Task<Guid> AddPostAsync(Post post, bool isReply = false, Guid? targetCommentUid = null)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+
+        // 如果是回复，设置RootPostUid和ToCommentUid
+        if (isReply)
+        {
+            if (targetCommentUid.HasValue)
+            {
+                var targetPost = await db.Posts.FindAsync(targetCommentUid.Value);
+                if (targetPost != null)
+                {
+                    // 如果目标评论是顶级评论，RootPostUid设为顶级评论的Uid
+                    // 如果目标评论是子评论，RootPostUid设为其RootPostUid
+                    post.RootPostUid = targetPost.RootPostUid ?? targetPost.Uid;
+                    post.ToCommentUid = targetPost.Uid;
+                }
+            }
+        }
+
+        db.Posts.Add(post);
+
+        // 同步话题帖子数
+        await db.Plates.Where(p => p.Id == post.PlateId)
+                       .ExecuteUpdateAsync(p => p.SetProperty(x => x.PostCount, x => x.PostCount + 1));
+
+        // 如果是回复，增加回复数
+        if (isReply)
+        {
+            await db.Posts.Where(p => p.Uid == post.RootPostUid)
+                           .ExecuteUpdateAsync(p => p.SetProperty(x => x.ReplyCount, x => x.ReplyCount + 1)
+                                                     .SetProperty(x => x.LastReplyTime, x => DateTime.Now));
+        }
+
+        await db.SaveChangesAsync();
+        return post.Uid;
+    }
+    #endregion
+
+    #region ====== Confession / Wish ======
+    public async Task<(List<Confession> Data, bool HasMore)> GetConfessionsPageAsync(int page, int size)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var (confessions, hasMore) = await GetPageAsync(db.Confessions.Where(c => !c.IsDeleted), page, size);
+
+        // 批量获取本页 AuthorGuid
+        var authorGuids = confessions.Select(c => c.AuthorGuid).Where(g => !string.IsNullOrEmpty(g)).Distinct().ToList();
+        var names = await GetUserNamesAsync(authorGuids);
+
+        // 批量更新 AuthorName（只更新本页涉及的 AuthorGuid）
+        foreach (var kv in names)
+        {
+            await db.Confessions
+                .Where(c => c.AuthorGuid == kv.Key && (string.IsNullOrEmpty(c.AuthorName) || c.AuthorName != kv.Value))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.AuthorName, x => kv.Value));
+        }
+
+        return (confessions, hasMore);
+    }
+
+    public async Task AddConfessionAsync(Confession c)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        db.Confessions.Add(c);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task<(List<Wish> Data, bool HasMore)> GetWishesPageAsync(int page, int size)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var (wishes, hasMore) = await GetPageAsync(db.Wishes.Where(w => !w.IsDeleted), page, size);
+
+        var authorGuids = wishes.Select(w => w.AuthorGuid).Where(g => !string.IsNullOrEmpty(g)).Distinct().ToList();
+        var names = await GetUserNamesAsync(authorGuids);
+
+        foreach (var kv in names)
+        {
+            await db.Wishes
+                .Where(w => w.AuthorGuid == kv.Key && (string.IsNullOrEmpty(w.AuthorName) || w.AuthorName != kv.Value))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.AuthorName, x => kv.Value));
+        }
+
+        return (wishes, hasMore);
+    }
+
+    public async Task AddWishAsync(Wish w)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        db.Wishes.Add(w);
+        await db.SaveChangesAsync();
+    }
+
+    // 为表白点赞
+    public async Task IncConfessionLikeAsync(Guid confessionUid)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        await db.Confessions.Where(c => c.Uid == confessionUid)
+                            .ExecuteUpdateAsync(c => c.SetProperty(x => x.LikeCount, x => x.LikeCount + 1));
+    }
+
+    // 为愿望点赞
+    public async Task IncWishLikeAsync(Guid wishUid)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        await db.Wishes.Where(w => w.Uid == wishUid)
+                       .ExecuteUpdateAsync(w => w.SetProperty(x => x.LikeCount, x => x.LikeCount + 1));
+    }
+    #endregion
+}
