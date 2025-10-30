@@ -1,0 +1,12 @@
+{
+  "NeedCount": 10,
+  "EnableSpeech":true,
+  "SpeechRepeat": 3,
+  "SpeechVolume": 100,
+  "SpeechRate": 1,
+  "VoiceNameKey": "HuiHui",
+  "SpeechTemplate": "今天抽中 {0} 名同学 {1}",
+  "ExcelFile": "Students.xlsx",
+  "LogLevel": 0,
+  "AutoStart": false
+}
